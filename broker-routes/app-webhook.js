@@ -14,10 +14,6 @@ app.post("/twilio", (req, res) => {
   return SendMessage();
 });
 
-app.post("/twilio", (req, res) => {
-  return SendMessage();
-});
-
 app.post("/blip", (req, res) => {
   const responseData = {
     statusCode: res.statusCode,
