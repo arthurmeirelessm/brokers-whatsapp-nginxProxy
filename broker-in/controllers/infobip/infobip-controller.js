@@ -1,4 +1,4 @@
-function processTwilioInput(twilioData) {
+function processWebhookInput(twilioData) {
   if ("MediaUrl0" in twilioData) {
     // Entrada com MediaUrl0
     return processMediaInput(twilioData);
@@ -49,8 +49,6 @@ const twilioDataWithoutMedia = {
   Body: "Oi",
 };
 
-const processedDataWithMedia = processTwilioInput(twilioDataWithMedia);
-const processedDataWithoutMedia = processTwilioInput(twilioDataWithoutMedia);
-
-console.log(processedDataWithMedia);
-console.log(processedDataWithoutMedia);
+module.exports = {
+  processWebhookInput,
+};
