@@ -1,13 +1,24 @@
-async function sendToRabbitmq(channel, input, queueName) {
+const amqp = require("amqplib");
+
+async function connectRabbitMQ(queue, input, selectedBot) {
   try {
-    channel.sendToQueue(queueName, Buffer.from(input));
-    console.log(`[x] Enviado: ${input}`);
+    const connection = await amqp.connect("amqp://my-rabbitmq");
+    const channel = await connection.createChannel();
+
+    await channel.assertQueue(queue, { durable: false });
+
+    const mensagem = input;
+    channel.sendToQueue(queue, Buffer.from(mensagem));
+    console.log(`[x] Mensagem enviada: ${mensagem}`);
+
+    await channel.waitForConfirms();
+
+    connection.close();
   } catch (error) {
-    console.error("Erro ao enviar mensagem para o RabbitMQ:", error.message);
-    throw error;
+    console.error("Erro ao enviar mensagem:", error);
   }
 }
 
 module.exports = {
-  sendToRabbitmq,
+  connectRabbitMQ,
 };

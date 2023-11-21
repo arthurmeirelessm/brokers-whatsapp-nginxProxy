@@ -4,18 +4,21 @@ const app = express();
 const port = 3000;
 const cors = require("cors");
 require("dotenv").config();
-const client = require("twilio")(process.env.ACCOUNTSID, process.env.AUTHTOKEN);
 const rabbitmq = require("../rabbitmq-services/rabbitmq-service");
 
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cors());
 
-app.post("/twilio", async (req, res) => {
+const selectedBot = process.env.BOT_TYPE;
+const selectedWebhook = process.env.WEBHOOK_TYPE;
+
+const processInput = async (req, res) => {
   const input = req.body.Body;
-  console.log(req.body);
-  const queue = "twilio-in";
-  rabbitmq.connectRabbitMQ(queue, input);
-});
+  const queue = `${selectedWebhook}-in`;
+  rabbitmq.connectRabbitMQ(queue, input, selectedBot);
+};
+
+app.route(`/${selectedWebhook}`).all(processInput);
 
 app.listen(port, () => {
   console.log(`Servidor rodando em http://localhost:${port}`);

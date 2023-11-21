@@ -13,4 +13,4 @@ RUN ls -al
 RUN pwd
 RUN npm ls
 
-CMD ["node", "broker-routes/app-webhook.js"]
+CMD ["node", "broker-in/brokers.js"]

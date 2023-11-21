@@ -3,7 +3,7 @@ services:
   api:
     build:
       context: .
-      dockerfile: broker-routes/Dockerfile
+      dockerfile: broker-in/Dockerfile
     ports:
       - "3000:3000" # Porta em que a sua API Node.js está rodando
 
