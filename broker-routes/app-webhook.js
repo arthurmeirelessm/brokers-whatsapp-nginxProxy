@@ -7,64 +7,37 @@ require("dotenv").config();
 const client = require("twilio")(process.env.ACCOUNTSID, process.env.AUTHTOKEN);
 const rabbitmq = require("../rabbitmq-services/rabbitmq-service");
 const amqp = require("amqplib");
-const rabbitMQUrl = "amqp://localhost"; // ou o endereço do seu servidor RabbitMQ
 
-app.use(bodyParser.json());
-
+app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cors());
 
-const rabbitmqPassword = process.env.RABBITMQ_DEFAULT_PASS;
-
 app.post("/twilio", async (req, res) => {
-  input = req.body.Body;
-  queue = "twilio-in";
-  await connectRabbitMQ(queue);
-  return SendMessage();
+  const input = req.body.Body;
+  const queue = "twilio-in";
+  connectRabbitMQ(queue, input);
 });
 
-app.post("/blip", (req, res) => {
-  const responseData = {
-    statusCode: res.statusCode,
-    statusMessage: res.statusMessage,
-    headers: res.getHeaders(),
-    body: req.body.user,
-  };
-
-  return res.send;
-});
-
-function SendMessage() {
-  console.log("passei");
-  return new Promise((resolve, reject) => {
-    client.messages
-      .create({
-        body: "mensagem envida pra fila 'twilio-in'",
-        from: "whatsapp:+14155238886",
-        to: "whatsapp:+559870221807",
-      })
-      .then((message) => {
-        console.log(message.sid);
-        resolve(message.sid);
-      })
-      .catch((error) => {
-        console.error(error);
-        reject(error);
-      });
-  });
-}
-
-async function connectRabbitMQ(queueName, input) {
+async function connectRabbitMQ(queue, input) {
   try {
-    const connection = await amqp.connect(rabbitMQUrl);
+    // Conectar ao servidor RabbitMQ
+    const connection = await amqp.connect("amqp://my-rabbitmq");
     const channel = await connection.createChannel();
 
-    await channel.assertQueue(queueName, { durable: true });
-    console.log(channel);
+    // Garantir que a fila existe
+    await channel.assertQueue(queue, { durable: false });
 
-    return await rabbitmq.sendToRabbitmq(channel, input, queueName);
+    // Enviar mensagem para a fila
+    const mensagem = input; // Use a mensagem recebida no corpo da requisição
+    channel.sendToQueue(queue, Buffer.from(mensagem));
+    console.log(`[x] Mensagem enviada: ${mensagem}`);
+
+    // Aguardar confirmação da mensagem ser processada
+    await channel.waitForConfirms();
+
+    // Fechar a conexão após enviar a mensagem e receber a confirmação
+    connection.close();
   } catch (error) {
-    console.error("Erro ao conectar ao RabbitMQ:", error.message);
-    throw error;
+    console.error("Erro ao enviar mensagem:", error);
   }
 }
 

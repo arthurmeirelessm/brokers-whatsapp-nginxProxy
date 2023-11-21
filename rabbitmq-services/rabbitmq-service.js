@@ -1,7 +1,7 @@
 async function sendToRabbitmq(channel, input, queueName) {
   try {
-    channel.sendToQueue(queueName, Buffer.from(mensagem));
-    console.log(`[x] Enviado: ${mensagem}`);
+    channel.sendToQueue(queueName, Buffer.from(input));
+    console.log(`[x] Enviado: ${input}`);
   } catch (error) {
     console.error("Erro ao enviar mensagem para o RabbitMQ:", error.message);
     throw error;
