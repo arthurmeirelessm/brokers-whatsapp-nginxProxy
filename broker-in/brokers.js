@@ -5,7 +5,6 @@ const port = 3000;
 const cors = require("cors");
 require("dotenv").config();
 
-// Importar controladores específicos para cada webhook
 const twilioController = require("./controllers/twilio/twilio-controller");
 const smartersController = require("./controllers/smarters/smarters-controller");
 const infobipController = require("./controllers/infobip/infobip-controller");
@@ -15,7 +14,6 @@ app.use(cors());
 
 const selectedWebhook = process.env.WEBHOOK_TYPE;
 
-// Selecionar o controlador correto com base no webhook escolhido
 let webhookController;
 switch (selectedWebhook) {
   case "twilio":
@@ -34,7 +32,7 @@ switch (selectedWebhook) {
 
 const processInput = async (req, res) => {
   const input = req.body;
-  const queue = `${selectedWebhook}-in`;
+  const queue = `${selectedWebhook}-messsages-in`;
   webhookController.processWebhookInput(input, queue);
   res.status(200).send("Mensagem recebida com sucesso");
 };

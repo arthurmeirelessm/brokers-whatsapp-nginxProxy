@@ -5,7 +5,7 @@ services:
       context: .
       dockerfile: broker-in/Dockerfile
     ports:
-      - "3000:3000" # Porta em que a sua API Node.js está rodando
+      - "3000:3000"
 
   nginx:
     image: nginx:latest
@@ -20,8 +20,8 @@ services:
     image: "rabbitmq:3-management"
     container_name: "my-rabbitmq"
     ports:
-      - "5672:5672" # Porta para conexões AMQP
-      - "15672:15672" # Porta para o painel de controle da RabbitMQ UI
+      - "5672:5672"
+      - "15672:15672" # UI
     environment:
       - RABBITMQ_DEFAULT_USER=guest
       - RABBITMQ_DEFAULT_PASS=guest

@@ -1,4 +1,4 @@
-const rabbitmq = require("../../../rabbitmq-services/rabbitmq-service");
+const rabbitmq = require("../../../rabbitmq-services/message-in");
 
 function processWebhookInput(smartersData, queue) {
   console.log(smartersData);
