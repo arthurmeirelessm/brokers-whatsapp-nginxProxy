@@ -3,7 +3,7 @@ services:
   api:
     build:
       context: .
-      dockerfile: broker-in/Dockerfile
+      dockerfile: whatsapp-in/Dockerfile
     ports:
       - "3000:3000"
 

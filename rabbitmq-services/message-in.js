@@ -1,6 +1,7 @@
-const amqp = require("amqplib");
+import amqp from "amqplib";
 
-async function connectRabbitMQ(input, queue) {
+export default async function connectRabbitMQ(input, queue) {
+  console.log(input);
   try {
     const connection = await amqp.connect("amqp://my-rabbitmq");
     const channel = await connection.createChannel();
@@ -12,9 +13,6 @@ async function connectRabbitMQ(input, queue) {
     const mensagem = JSON.stringify(input);
 
     const properties = {
-      headers: {
-        clientNumber: clientNumber,
-      },
       persistent: true,
     };
 
@@ -28,7 +26,3 @@ async function connectRabbitMQ(input, queue) {
     console.error("Erro ao enviar mensagem:", error);
   }
 }
-
-module.exports = {
-  connectRabbitMQ,
-};
