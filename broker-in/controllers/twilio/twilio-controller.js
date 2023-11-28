@@ -1,41 +1,46 @@
-const rabbitmq = require("../../../rabbitmq-services/message-in");
+import connectRabbitMQ from "../../../rabbitmq-services/message-in.js";
+import dotenv from "dotenv";
+dotenv.config();
 
-function processWebhookInput(twilioData, queue) {
+const selectedWebhook = process.env.WEBHOOK_TYPE;
+
+export default function processTwilioWebhookInput(twilioData, queue) {
+  let output;
+
   if (!("MediaContentType0" in twilioData)) {
-    if ("Longitude" && "Latitude" in twilioData) {
-      return processLocationInput(twilioData, queue);
+    if ("Longitude" in twilioData && "Latitude" in twilioData) {
+      output = processLocationInput(twilioData);
+    } else {
+      output = processTextInput(twilioData);
     }
-    return processTextInput(twilioData, queue);
   } else {
     const mediaContentType = twilioData.MediaContentType0;
     const processFunction = mediaTypeProcessors[mediaContentType];
 
     if (processFunction) {
-      return processFunction(twilioData, queue);
+      output = processFunction(twilioData);
     } else {
       console.error(`Tipo de mídia não suportado: ${mediaContentType}`);
       return null;
     }
   }
+
+  return connectRabbitMQ(output, queue);
 }
 
-function processTextInput(twilioData, queue) {
-  const output = createOutputObject(twilioData, "text");
-  output.body = twilioData.Body;
-  console.log(output);
-  return rabbitmq.connectRabbitMQ(output, queue);
+function processTextInput(twilioData) {
+  return createOutputObject(twilioData, "text");
 }
 
 function createOutputObject(twilioData, type) {
   const commonMetadata = {
-    "client-id": 1213,
-    "nome-do-cliente": twilioData.ProfileName,
-    SmsMessageSid: twilioData.SmsMessageSid,
-    SmsSid: twilioData.SmsSid,
+    clientId: 1213,
+    client: twilioData.ProfileName,
     MessageSid: twilioData.MessageSid,
   };
 
   return {
+    broker: selectedWebhook,
     type: type,
     clientNumber: twilioData.WaId,
     NumMedia: twilioData.NumMedia,
@@ -52,49 +57,45 @@ const mediaTypeProcessors = {
   "image/webp": processStickerInput,
 };
 
-function processImageInput(twilioData, queue) {
+function processImageInput(twilioData) {
   const output = createOutputObject(twilioData, "image");
   output.media = twilioData.MediaUrl0;
-  return rabbitmq.connectRabbitMQ(output, queue);
+  return output;
 }
 
-function processAudioInput(twilioData, queue) {
+function processAudioInput(twilioData) {
   const output = createOutputObject(twilioData, "audio");
   output.media = twilioData.MediaUrl0;
-  return rabbitmq.connectRabbitMQ(output, queue);
+  return output;
 }
 
-function processStickerInput(twilioData, queue) {
+function processStickerInput(twilioData) {
   const output = createOutputObject(twilioData, "sticker");
   output.media = twilioData.MediaUrl0;
-  return rabbitmq.connectRabbitMQ(output, queue);
+  return output;
 }
 
-function processLocationInput(twilioData, queue) {
+function processLocationInput(twilioData) {
   const output = createOutputObject(twilioData, "location");
   output.latitude = twilioData.Latitude;
   output.longitude = twilioData.Longitude;
-  return rabbitmq.connectRabbitMQ(output, queue);
+  return output;
 }
 
-function processContactInput(twilioData, queue) {
+function processContactInput(twilioData) {
   const output = createOutputObject(twilioData, "contact");
   output.media = twilioData.MediaUrl0;
-  return rabbitmq.connectRabbitMQ(output, queue);
+  return output;
 }
 
-function processPdfInput(twilioData, queue) {
+function processPdfInput(twilioData) {
   const output = createOutputObject(twilioData, "pdf");
   output.media = twilioData.MediaUrl0;
-  return rabbitmq.connectRabbitMQ(output, queue);
+  return output;
 }
 
-function processVideoInput(twilioData, queue) {
+function processVideoInput(twilioData) {
   const output = createOutputObject(twilioData, "video");
   output.media = twilioData.MediaUrl0;
-  return rabbitmq.connectRabbitMQ(output, queue);
+  return output;
 }
-
-module.exports = {
-  processWebhookInput,
-};

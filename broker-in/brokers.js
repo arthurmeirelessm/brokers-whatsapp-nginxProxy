@@ -1,15 +1,17 @@
-const express = require("express");
-const bodyParser = require("body-parser");
+import express from "express";
+import bodyParser from "body-parser";
 const app = express();
 const port = 3000;
-const cors = require("cors");
-require("dotenv").config();
+import cors from "cors";
+import dotenv from "dotenv";
+dotenv.config();
 
-const twilioController = require("./controllers/twilio/twilio-controller");
-const smartersController = require("./controllers/smarters/smarters-controller");
-const infobipController = require("./controllers/infobip/infobip-controller");
+import processTwilioWebhookInput from "./controllers/twilio/twilio-controller.js";
+import processSmartersWebhookInput from "./controllers/smarters/smarters-controller.js";
+import processInfobipWebhookInput from "./controllers/infobip/infobip-controller.js";
 
 app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.json());
 app.use(cors());
 
 const selectedWebhook = process.env.WEBHOOK_TYPE;
@@ -17,13 +19,13 @@ const selectedWebhook = process.env.WEBHOOK_TYPE;
 let webhookController;
 switch (selectedWebhook) {
   case "twilio":
-    webhookController = twilioController;
+    webhookController = processTwilioWebhookInput;
     break;
   case "smarters":
-    webhookController = smartersController;
+    webhookController = processSmartersWebhookInput;
     break;
   case "infobip":
-    webhookController = infobipController;
+    webhookController = processInfobipWebhookInput;
     break;
   default:
     console.error("Webhook não suportado:", selectedWebhook);
@@ -32,12 +34,13 @@ switch (selectedWebhook) {
 
 const processInput = async (req, res) => {
   const input = req.body;
-  const queue = `${selectedWebhook}-messsages-in`;
-  webhookController.processWebhookInput(input, queue);
+  console.log(input);
+  const queue = `${selectedWebhook}-in`;
+  webhookController(input, queue, selectedWebhook);
   res.status(200).send("Mensagem recebida com sucesso");
 };
 
-app.route(`/${selectedWebhook}`).all(processInput);
+app.route(`/${selectedWebhook}`).post(processInput);
 
 app.listen(port, () => {
   console.log(`Servidor rodando em http://localhost:${port}`);

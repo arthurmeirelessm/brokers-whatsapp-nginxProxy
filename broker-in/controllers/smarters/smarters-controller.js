@@ -1,135 +1,104 @@
-const rabbitmq = require("../../../rabbitmq-services/message-in");
+import connectRabbitMQ from "../../../rabbitmq-services/message-in.js";
 
-function processWebhookInput(smartersData, queue) {
-  console.log(smartersData);
+import dotenv from "dotenv";
+dotenv.config();
+
+const selectedWebhook = process.env.WEBHOOK_TYPE;
+
+export default function processSmartersWebhookInput(smartersData, queue) {
+  const contentType = smartersData.header.contentType;
+
+  let output;
+
+  if (contentType === "text") {
+    output = processTextInput(smartersData);
+  } else if (contentType === "location") {
+    output = processLocationInput(smartersData);
+  } else {
+    const mediaContentType = contentType;
+    const processFunction = mediaTypeProcessors[mediaContentType];
+
+    if (processFunction) {
+      output = processFunction(smartersData);
+    } else {
+      console.error(`Tipo de mídia não suportado: ${mediaContentType}`);
+      return null;
+    }
+  }
+
+  return connectRabbitMQ(output, queue);
 }
 
-function processTextInput(twilioData, queue) {
-  console.log(twilioData);
-  const output = {
-    type: "text",
-    body: twilioData.Body,
-    clientNumber: twilioData.WaId,
-    NumMedia: twilioData.NumMedia,
-    metadata: {
-      "client-id": 1213,
-      "nome-do-cliente": twilioData.ProfileName,
-      SmsMessageSid: twilioData.SmsMessageSid,
-      SmsSid: twilioData.SmsSid,
-      MessageSid: twilioData.MessageSid,
-    },
+function processTextInput(smartersData) {
+  const output = createOutputObject(smartersData, "text");
+  output.body = smartersData.Body;
+  console.log(output);
+  return output;
+}
+
+function createOutputObject(smartersData, type) {
+  const commonMetadata = {
+    clientId: 1213,
+    client: smartersData.header.sender.name,
+    MessageSid: smartersData.header.messageID,
   };
 
-  console.log(output);
-
-  return rabbitmq.connectRabbitMQ(output, queue);
-}
-
-function processTextInput(twilioData, queue) {
-  console.log(twilioData);
-  const output = {
-    type: "text",
-    body: twilioData.Body,
-    clientNumber: twilioData.WaId,
-    NumMedia: twilioData.NumMedia,
-    metadata: {
-      "client-id": 1213,
-      "nome-do-cliente": twilioData.ProfileName,
-      SmsMessageSid: twilioData.SmsMessageSid,
-      SmsSid: twilioData.SmsSid,
-      MessageSid: twilioData.MessageSid,
-    },
+  return {
+    broker: selectedWebhook,
+    type: type,
+    clientNumber: smartersData.header.sender.id,
+    metadata: commonMetadata,
   };
-
-  function processImageInput(twilioData, queue) {
-    console.log(twilioData);
-    const output = {
-      type: "image",
-      body: twilioData.Body,
-      clientNumber: twilioData.WaId,
-      NumMedia: twilioData.NumMedia,
-      metadata: {
-        "client-id": 1213,
-        "nome-do-cliente": twilioData.ProfileName,
-        SmsMessageSid: twilioData.SmsMessageSid,
-        SmsSid: twilioData.SmsSid,
-        MessageSid: twilioData.MessageSid,
-      },
-    };
-
-    console.log(output);
-
-    return rabbitmq.connectRabbitMQ(output, queue);
-  }
-
-  function processAudioInput(twilioData, queue) {
-    console.log(twilioData);
-    const output = {
-      type: "audio",
-      body: twilioData.Body,
-      clientNumber: twilioData.WaId,
-      NumMedia: twilioData.NumMedia,
-      metadata: {
-        "client-id": 1213,
-        "nome-do-cliente": twilioData.ProfileName,
-        SmsMessageSid: twilioData.SmsMessageSid,
-        SmsSid: twilioData.SmsSid,
-        MessageSid: twilioData.MessageSid,
-      },
-    };
-
-    console.log(output);
-
-    return rabbitmq.connectRabbitMQ(output, queue);
-  }
-
-  function processStickerInput(twilioData, queue) {
-    console.log(twilioData);
-    const output = {
-      type: "sticker",
-      body: twilioData.Body,
-      clientNumber: twilioData.WaId,
-      NumMedia: twilioData.NumMedia,
-      metadata: {
-        "client-id": 1213,
-        "nome-do-cliente": twilioData.ProfileName,
-        SmsMessageSid: twilioData.SmsMessageSid,
-        SmsSid: twilioData.SmsSid,
-        MessageSid: twilioData.MessageSid,
-      },
-    };
-
-    console.log(output);
-
-    return rabbitmq.connectRabbitMQ(output, queue);
-  }
-
-  function processVideoInput(twilioData, queue) {
-    console.log(twilioData);
-    const output = {
-      type: "video",
-      body: twilioData.Body,
-      clientNumber: twilioData.WaId,
-      NumMedia: twilioData.NumMedia,
-      metadata: {
-        "client-id": 1213,
-        "nome-do-cliente": twilioData.ProfileName,
-        SmsMessageSid: twilioData.SmsMessageSid,
-        SmsSid: twilioData.SmsSid,
-        MessageSid: twilioData.MessageSid,
-      },
-    };
-
-    console.log(output);
-
-    return rabbitmq.connectRabbitMQ(output, queue);
-  }
-
-  console.log(output);
-
-  return rabbitmq.connectRabbitMQ(output, queue);
 }
 
-module.exports = {
-  processWebhookInput,
+const mediaTypeProcessors = {
+  video: processVideoInput,
+  voice: processAudioInput,
+  contacts: processContactInput,
+  document: processPdfInput,
+  image: processImageInput,
+  sticker: processStickerInput,
 };
+
+function processImageInput(smartersData) {
+  const output = createOutputObject(smartersData, "image");
+  output.media = smartersData.content.image.url;
+  return output;
+}
+
+function processAudioInput(smartersData) {
+  const output = createOutputObject(smartersData, "audio");
+  output.media = smartersData.content.voice.url;
+  return output;
+}
+
+function processStickerInput(smartersData) {
+  const output = createOutputObject(smartersData, "sticker");
+  output.media = smartersData.content.sticker.url;
+  return output;
+}
+
+function processLocationInput(smartersData) {
+  const output = createOutputObject(smartersData, "location");
+  output.latitude = smartersData.content.latitude;
+  output.longitude = smartersData.content.longitude;
+  return output;
+}
+
+function processContactInput(smartersData) {
+  const output = createOutputObject(smartersData, "contact");
+  return output;
+}
+
+function processPdfInput(smartersData) {
+  const output = createOutputObject(smartersData, "pdf");
+  output.media = smartersData.content.document.url;
+  output.file = smartersData.content.document.filename;
+  return output;
+}
+
+function processVideoInput(smartersData) {
+  const output = createOutputObject(smartersData, "video");
+  output.media = smartersData.content.video.url;
+  return output;
+}

@@ -1,54 +1,104 @@
-function processWebhookInput(twilioData) {
-  if ("MediaUrl0" in twilioData) {
-    // Entrada com MediaUrl0
-    return processMediaInput(twilioData);
+import connectRabbitMQ from "../../../rabbitmq-services/message-in.js";
+import dotenv from "dotenv";
+dotenv.config();
+
+const selectedWebhook = process.env.WEBHOOK_TYPE;
+
+export default function processInfobipWebhookInput(infobipData, queue) {
+  const message = infobipData.results[0].message;
+
+  let output;
+
+  if ("text" in message) {
+    output = processTextInput(infobipData);
+  } else if ("latitude" && "longitude" in message) {
+    output = processLocationInput(infobipData);
   } else {
-    // Entrada sem MediaUrl0
-    return processTextInput(twilioData);
+    const messageType = infobipData.results[0]?.message?.type;
+    const processFunction = mediaTypeProcessors[messageType];
+
+    if (processFunction) {
+      output = processFunction(infobipData);
+    } else {
+      console.error(`Tipo de mídia não suportado: ${messageType}`);
+      return null;
+    }
   }
+
+  // Chame connectRabbitMQ apenas uma vez
+  return connectRabbitMQ(output, queue);
 }
 
-function processMediaInput(twilioData) {
+function processTextInput(infobipData) {
+  const output = createOutputObject(infobipData, "text");
+  output.body = infobipData.results[0].message.text;
+  return output;
+}
+
+function createOutputObject(infobipData, type) {
+  const commonMetadata = {
+    clientId: 1213,
+    client: infobipData.results[0].contact.name,
+    MessageSid: infobipData.results[0].messageId,
+    receivedAt: infobipData.results[0].receivedAt,
+  };
+
   return {
-    text: "",
-    clientNumber: twilioData.From.replace("whatsapp:", ""),
-    NumMedia: 1,
-    metadata: {
-      "client-id": 1213,
-      "nome-do-cliente": twilioData.ProfileName || "Nome do Cliente",
-    },
-    mediaUrl: twilioData.MediaUrl0,
-    mediaContentType: twilioData.MediaContentType0,
+    broker: selectedWebhook,
+    type: type,
+    clientNumber: infobipData.results[0].from,
+    metadata: commonMetadata,
   };
 }
 
-function processTextInput(twilioData) {
-  return {
-    text: twilioData.Body,
-    clientNumber: twilioData.From.replace("whatsapp:", ""),
-    NumMedia: 0,
-    metadata: {
-      "client-id": 1213,
-      "nome-do-cliente": twilioData.ProfileName || "Nome do Cliente",
-    },
-  };
+const mediaTypeProcessors = {
+  VIDEO: processVideoInput,
+  VOICE: processAudioInput,
+  CONTACT: processContactInput,
+  DOCUMENT: processPdfInput,
+  IMAGE: processImageInput,
+  STICKER: processStickerInput,
+};
+
+function processImageInput(infobipData) {
+  const output = createOutputObject(infobipData, "image");
+  output.media = infobipData.results[0].message.url;
+  return output;
 }
 
-// Exemplo de uso
-const twilioDataWithMedia = {
-  MediaContentType0: "image/jpeg",
-  SmsMessageSid: "MM6df95cdf94fec95a80064f389d4f1b86",
-  // ... outras propriedades
-  MediaUrl0:
-    "https://api.twilio.com/2010-04-01/Accounts/AC410b2849be6ac4bc80e8706c2a28c91d/Messages/MM6df95cdf94fec95a80064f389d4f1b86/Media/MEa71e8cc1a648cddb303241843726b8f9",
-};
+function processAudioInput(infobipData) {
+  const output = createOutputObject(infobipData, "audio");
+  output.media = infobipData.results[0].message.url;
+  return output;
+}
 
-const twilioDataWithoutMedia = {
-  SmsMessageSid: "SM4a6d931f66d0d27221cd008381db9248",
-  // ... outras propriedades
-  Body: "Oi",
-};
+function processStickerInput(infobipData) {
+  const output = createOutputObject(infobipData, "sticker");
+  output.media = infobipData.results[0].message.url;
+  return output;
+}
 
-module.exports = {
-  processWebhookInput,
-};
+function processLocationInput(infobipData) {
+  const output = createOutputObject(infobipData, "location");
+  output.latitude = infobipData.results[0].message.latitude;
+  output.longitude = infobipData.results[0].message.longitude;
+  return output;
+}
+
+function processContactInput(infobipData) {
+  const output = createOutputObject(infobipData, "contact");
+  console.log(infobipData.results[0].contact.contacts);
+  return output;
+}
+
+function processPdfInput(infobipData) {
+  const output = createOutputObject(infobipData, "document");
+  output.media = infobipData.results[0].message.url;
+  return output;
+}
+
+function processVideoInput(infobipData) {
+  const output = createOutputObject(infobipData, "video");
+  output.media = infobipData.results[0].message.url;
+  return output;
+}
