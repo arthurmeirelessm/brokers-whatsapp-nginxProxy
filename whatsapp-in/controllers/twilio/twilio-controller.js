@@ -29,7 +29,9 @@ export default function processTwilioWebhookInput(twilioData, queue) {
 }
 
 function processTextInput(twilioData) {
-  return createOutputObject(twilioData, "text");
+  const output = createOutputObject(twilioData, "text");
+  output.body = twilioData.Body;
+  return output;
 }
 
 function createOutputObject(twilioData, type) {
