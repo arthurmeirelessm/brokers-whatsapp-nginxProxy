@@ -31,7 +31,7 @@ export default function processSmartersWebhookInput(smartersData, queue) {
 
 function processTextInput(smartersData) {
   const output = createOutputObject(smartersData, "text");
-  output.body = smartersData.Body;
+  output.body = smartersData.content.text;
   console.log(output);
   return output;
 }
