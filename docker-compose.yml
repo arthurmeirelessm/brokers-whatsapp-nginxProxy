@@ -6,6 +6,8 @@ services:
       dockerfile: whatsapp-in/Dockerfile
     ports:
       - "3000:3000"
+    networks:
+      - brokers-network
 
   nginx:
     image: nginx:latest
@@ -15,10 +17,12 @@ services:
       - ./nginx/conf/nginx.conf:/etc/nginx/nginx.conf
     depends_on:
       - api
+    networks:
+      - brokers-network
 
   rabbitmq:
     image: "rabbitmq:3-management"
-    container_name: "my-rabbitmq"
+    container_name: "messages-in"
     ports:
       - "5672:5672"
       - "15672:15672" # UI
@@ -27,7 +31,14 @@ services:
       - RABBITMQ_DEFAULT_PASS=guest
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
-
+    networks:
+      - brokers-network
+    expose:
+      - "5672"
 volumes:
   rabbitmq-data:
     driver: local
+
+networks:
+  brokers-network:
+    external: true
